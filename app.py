@@ -1,3 +1,15 @@
+try:
+    import spaces
+except Exception:
+    class _MockSpaces:
+        def GPU(self, *args, **kwargs):
+            if len(args) == 1 and callable(args[0]):
+                return args[0]
+            def decorator(f):
+                return f
+            return decorator
+    spaces = _MockSpaces()
+
 import os
 import sys
 import json
@@ -148,6 +160,7 @@ def get_doc_list():
     return pd.DataFrame(data) if data else pd.DataFrame(columns=["ID", "Filename", "Security Role", "Chunks", "Version"])
 
 
+@spaces.GPU(duration=120)
 def run_benchmark(num_questions):
     try:
         dataset = generate_synthetic_benchmark(num_questions=int(num_questions))

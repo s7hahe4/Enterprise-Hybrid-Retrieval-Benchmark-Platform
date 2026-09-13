@@ -7,3 +7,6 @@ ragas
 openai
 pypdf
 faiss-cpu
+gradio>=5.0.0
+pandas
+reportlab

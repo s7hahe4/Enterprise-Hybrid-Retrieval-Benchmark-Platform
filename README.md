@@ -1,3 +1,16 @@
+---
+title: Enterprise Hybrid RAG Platform
+emoji: ⚡
+colorFrom: indigo
+colorTo: blue
+sdk: gradio
+sdk_version: 6.27.0
+app_file: app.py
+pinned: false
+license: mit
+short_description: Enterprise Hybrid RAG Platform with Cross-Encoder Re-Ranking
+---
+
 # Enterprise Hybrid Retrieval & Benchmark Platform
 
 [![Python 3.11](https://img.shields.io/badge/Python-3.11-blue.svg)](https://www.python.org/)

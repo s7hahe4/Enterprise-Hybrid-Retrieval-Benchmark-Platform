@@ -1,0 +1,11 @@
+Django>=4.2,<5.0
+djangorestframework
+django-environ
+django-cors-headers
+sentence-transformers
+rank-bm25
+ragas
+openai
+pypdf
+faiss-cpu
+gunicorn

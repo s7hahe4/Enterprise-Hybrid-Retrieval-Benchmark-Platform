@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: rag_intel_backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - DJANGO_SETTINGS_MODULE=core.settings
+      - DEBUG=True
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+    volumes:
+      - rag_data:/app/data
+      - ./rag_intel_system/faiss_index.bin:/app/faiss_index.bin
+      - ./rag_intel_system/db.sqlite3:/app/db.sqlite3
+    networks:
+      - rag_network
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: rag_intel_frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "5173:80"
+    depends_on:
+      - backend
+    networks:
+      - rag_network
+
+volumes:
+  rag_data:
+
+networks:
+  rag_network:
+    driver: bridge

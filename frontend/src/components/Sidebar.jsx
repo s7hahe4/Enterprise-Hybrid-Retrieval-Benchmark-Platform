@@ -45,31 +45,31 @@ export default function Sidebar({
 
   const PRESETS = [
     {
-      label: "Ask About ML & Experience",
-      badge: "KNOWLEDGE",
-      query: "What machine learning and backend engineering experience does Shahedul have?",
+      label: "Summarize Key Concepts & Findings",
+      badge: "SUMMARY",
+      query: "Summarize the primary topics, core concepts, and key findings from the uploaded document.",
       type: "rag"
     },
     {
-      label: "Ask Confidential Payroll",
-      badge: "SECURITY",
-      query: "What is the confidential payroll ledger and executive bonus package?",
-      type: "rbac"
+      label: "Explain Technical Architecture",
+      badge: "DEEP DIVE",
+      query: "What are the main technical architectures, methodologies, or processes described across the sections?",
+      type: "rag"
     },
     {
-      label: "Ask Technical Research & Stats",
-      badge: "DEEP SEARCH",
-      query: "What research did he perform on Monte Carlo Dropout and Wilcoxon tests?",
+      label: "Extract Tables & Data Metrics",
+      badge: "DATA & TABLES",
+      query: "What specific data metrics, structured tables, or comparative benchmarks are detailed in the document?",
       type: "rag"
     },
     {
       label: "Say Hello / Capabilities",
       badge: "CHITCHAT",
-      query: "Hello! What can you do?",
+      query: "Hello! What are your capabilities and how can you help me explore my documents?",
       type: "chitchat"
     },
     {
-      label: "Ask Off-Topic (Baking Recipe)",
+      label: "Test Out-of-Scope (Baking Recipe)",
       badge: "GUARDRAIL",
       query: "What is the best recipe for baking chocolate cookies?",
       type: "ood"

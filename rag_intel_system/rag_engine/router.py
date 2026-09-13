@@ -51,11 +51,12 @@ def classify_intent(query):
                 'precomputed_response': resp
             }
 
-    # Check 2: Semantic Domain Boundary Proximity Check
-    # We query FAISS to observe the top nearest neighbor distance
+    # Check 2: Hybrid Semantic & Keyword Domain Boundary Check
     top_candidates = dense_vector_search(query, top_k=3)
+    from .bm25_search import bm25_search
+    top_sparse = bm25_search(query, top_k=3)
     
-    if not top_candidates:
+    if not top_candidates and not top_sparse:
         return {
             'intent': 'OUT_OF_DOMAIN',
             'confidence': 0.95,
@@ -63,24 +64,23 @@ def classify_intent(query):
             'precomputed_response': "No documents are currently indexed in the knowledge base. Please upload a PDF document first so I can retrieve relevant context."
         }
         
-    best_sim = top_candidates[0]['similarity']
-    best_distance = top_candidates[0]['distance']
+    best_sim = top_candidates[0]['similarity'] if top_candidates else 0.0
+    has_keyword_match = len(top_sparse) > 0 and top_sparse[0].get('score', 0) > 0.2
     
-    # In FAISS L2 with normalized embeddings or all-MiniLM-L6-v2:
-    # High L2 distance (> 1.45) or very low similarity (< 0.40) indicates out-of-distribution
-    OOD_THRESHOLD_SIMILARITY = 0.40
+    # OOD Threshold: calibrated for general document exploration
+    OOD_THRESHOLD_SIMILARITY = 0.28
     
-    if best_sim < OOD_THRESHOLD_SIMILARITY:
+    if best_sim < OOD_THRESHOLD_SIMILARITY and not has_keyword_match:
         return {
             'intent': 'OUT_OF_DOMAIN',
             'confidence': round(1.0 - best_sim, 3),
-            'rationale': f"Query semantic similarity ({best_sim:.3f}) falls below the domain relevance threshold ({OOD_THRESHOLD_SIMILARITY}). Guardrail triggered to prevent out-of-distribution hallucination.",
+            'rationale': f"Query semantic similarity ({best_sim:.3f}) falls below domain relevance threshold ({OOD_THRESHOLD_SIMILARITY}) with no keyword matches. Guardrail triggered to prevent out-of-distribution hallucination.",
             'precomputed_response': "I am specifically scoped to answer questions grounded in your uploaded documents. Your query appears to be outside the domain of the indexed knowledge base. Please ask a question related to your uploaded PDFs."
         }
         
     return {
         'intent': 'IN_DOMAIN_RAG',
-        'confidence': round(min(0.99, best_sim + 0.35), 3),
-        'rationale': f"Query passed domain guardrails with top semantic match similarity of {best_sim:.3f}. Routing to Hybrid Retrieval + Cross-Encoder pipeline.",
+        'confidence': round(min(0.99, max(best_sim + 0.30, 0.85)), 3),
+        'rationale': f"Query passed domain guardrails (semantic match: {best_sim:.3f}, keyword hit: {has_keyword_match}). Routing to Hybrid Retrieval + Cross-Encoder pipeline.",
         'precomputed_response': None
     }

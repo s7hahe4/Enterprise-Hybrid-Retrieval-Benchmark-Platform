@@ -143,12 +143,32 @@ export default function ChatArea({
                   </div>
                 )}
 
-                {/* Message Content with Clickable Footnotes */}
-                <div style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6', fontSize: '0.92rem' }}>
-                  {msg.role === 'assistant' 
-                    ? renderMessageContent(msg.content, msg.citations) 
-                    : msg.content}
-                </div>
+                {/* Message Content or Animated Thinking State */}
+                {msg.role === 'assistant' && !msg.content ? (
+                  <div className="ai-thinking-indicator">
+                    <div className="thinking-dots">
+                      <span className="dot dot-1"></span>
+                      <span className="dot dot-2"></span>
+                      <span className="dot dot-3"></span>
+                    </div>
+                    <span className="thinking-label">
+                      {msg.intent === 'IN_DOMAIN_RAG' 
+                        ? 'Searching knowledge base, re-ranking passages & synthesizing answer...' 
+                        : msg.intent 
+                        ? 'Evaluating semantic guardrails & preparing response...' 
+                        : 'Analyzing query intent & security tier...'}
+                    </span>
+                  </div>
+                ) : (
+                  <div style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6', fontSize: '0.92rem' }}>
+                    {msg.role === 'assistant' 
+                      ? renderMessageContent(msg.content, msg.citations) 
+                      : msg.content}
+                    {msg.role === 'assistant' && index === messages.length - 1 && isStreaming && (
+                      <span className="streaming-cursor"></span>
+                    )}
+                  </div>
+                )}
 
                 {/* Verifiable Citation Chips */}
                 {msg.role === 'assistant' && msg.citations && msg.citations.length > 0 && (
@@ -192,8 +212,8 @@ export default function ChatArea({
                   </div>
                 )}
 
-                {/* Explainability / MLOps Button */}
-                {msg.role === 'assistant' && (msg.explainabilityData || msg.metrics) && (
+                {/* Explainability / MLOps Button - Visible once answer starts streaming */}
+                {msg.role === 'assistant' && msg.content && (msg.explainabilityData || msg.metrics) && (
                   <div>
                     <button 
                       className="btn-explain"

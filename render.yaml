@@ -3,6 +3,7 @@ services:
     name: nexus-rag-backend
     runtime: python
     rootDir: rag_intel_system
+    autoDeploy: true
     buildCommand: "./build.sh"
     startCommand: "uvicorn core.asgi:application --host 0.0.0.0 --port $PORT"
     envVars:
@@ -10,3 +11,7 @@ services:
         value: 3.11.9
       - key: DJANGO_SETTINGS_MODULE
         value: core.settings
+      - key: RENDER
+        value: "true"
+      - key: LIGHTWEIGHT_MODE
+        value: "true"

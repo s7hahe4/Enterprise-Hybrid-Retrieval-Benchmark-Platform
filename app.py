@@ -545,15 +545,25 @@ with gr.Blocks(title="NexusRAG Platform") as demo:
                 outputs=[benchmark_table, benchmark_status]
             )
 
-# Mount Django ASGI REST & Streaming API at /api
+# Mount Django ASGI REST & Streaming API on FastAPI
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+import uvicorn
+
+fastapi_app = FastAPI(title="NexusRAG API")
+fastapi_app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 from django.core.asgi import get_asgi_application
 django_app = get_asgi_application()
-demo.app.mount("/api", django_app)
+fastapi_app.mount("/api", django_app)
+
+app = gr.mount_gradio_app(fastapi_app, demo, path="/")
 
 if __name__ == "__main__":
-    demo.launch(
-        server_name="0.0.0.0",
-        server_port=7860,
-        css=custom_css,
-        theme=custom_theme
-    )
+    uvicorn.run(app, host="0.0.0.0", port=7860)

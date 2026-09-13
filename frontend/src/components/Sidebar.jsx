@@ -45,27 +45,32 @@ export default function Sidebar({
 
   const PRESETS = [
     {
-      label: "ML & Backend Experience",
+      label: "Ask About ML & Experience",
+      badge: "KNOWLEDGE",
       query: "What machine learning and backend engineering experience does Shahedul have?",
       type: "rag"
     },
     {
-      label: "HR Restricted Payroll Test",
+      label: "Ask Confidential Payroll",
+      badge: "SECURITY",
       query: "What is the confidential payroll ledger and executive bonus package?",
       type: "rbac"
     },
     {
-      label: "Research & Statistical Tests",
+      label: "Ask Technical Research & Stats",
+      badge: "DEEP SEARCH",
       query: "What research did he perform on Monte Carlo Dropout and Wilcoxon tests?",
       type: "rag"
     },
     {
-      label: "Chitchat Route Guardrail",
+      label: "Say Hello / Capabilities",
+      badge: "CHITCHAT",
       query: "Hello! What can you do?",
       type: "chitchat"
     },
     {
-      label: "Out-of-Domain Guardrail",
+      label: "Ask Off-Topic (Baking Recipe)",
+      badge: "GUARDRAIL",
       query: "What is the best recipe for baking chocolate cookies?",
       type: "ood"
     }
@@ -150,10 +155,16 @@ export default function Sidebar({
 
       {/* Preset Prompts */}
       <div>
-        <h2 style={{ fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.6rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-          <Zap size={14} style={{ color: '#f59e0b' }} />
-          Test Pipeline Guardrails
-        </h2>
+        <div style={{ marginBottom: '0.6rem' }}>
+          <h2 style={{ fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <Zap size={14} style={{ color: '#f59e0b' }} />
+            Try Example Questions
+          </h2>
+          <span style={{ fontSize: '0.68rem', color: 'var(--text-dim)', display: 'block', marginTop: '0.2rem' }}>
+            Click an example to test AI routing & security
+          </span>
+        </div>
+
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
           {PRESETS.map((p, idx) => (
             <button
@@ -184,15 +195,16 @@ export default function Sidebar({
             >
               <span>{p.label}</span>
               <span style={{ 
-                fontSize: '0.65rem', 
-                padding: '0.15rem 0.4rem', 
+                fontSize: '0.62rem', 
+                padding: '0.15rem 0.45rem', 
                 borderRadius: '4px',
                 background: p.type === 'rag' ? 'rgba(16, 185, 129, 0.15)' : p.type === 'rbac' ? 'rgba(244, 114, 182, 0.2)' : p.type === 'chitchat' ? 'rgba(6, 182, 212, 0.15)' : 'rgba(239, 68, 68, 0.15)',
                 color: p.type === 'rag' ? '#34d399' : p.type === 'rbac' ? '#f472b6' : p.type === 'chitchat' ? '#38bdf8' : '#f87171',
                 textTransform: 'uppercase',
-                fontWeight: 600
+                fontWeight: 600,
+                letterSpacing: '0.03em'
               }}>
-                {p.type}
+                {p.badge || p.type}
               </span>
             </button>
           ))}

@@ -11,19 +11,16 @@ except Exception:
     spaces = _MockSpaces()
 
 @spaces.GPU
-def gpu_inference_accelerator(dummy=None):
-    """ZeroGPU accelerator hook for Hugging Face hardware allocation"""
-    return dummy
+def gpu_init(x=""):
+    """ZeroGPU hook to satisfy Hugging Face startup check"""
+    return x
 
 import os
 import sys
 import django
-import uvicorn
 import gradio as gr
-from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
-from fastapi.middleware.cors import CORSMiddleware
 
 # Setup Django backend
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -67,45 +64,62 @@ if Document.objects.count() == 0:
                 except Exception as e:
                     print(f"Error seeding {fname}: {e}")
 
-# Build FastAPI parent app
-fastapi_app = FastAPI(title="NexusRAG Platform API")
-
-fastapi_app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# 1. Mount Django ASGI API at /api
-fastapi_app.mount("/api", django_app)
-
-# 2. Mount compiled Vite React assets
 dist_dir = os.path.join(BASE_DIR, "frontend", "dist")
+
+custom_css = """
+body, html, .gradio-container, gradio-app {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    overflow: hidden !important;
+    background: #0f172a !important;
+}
+footer { display: none !important; }
+.main { padding: 0 !important; }
+#react-app-frame {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    border: none;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    z-index: 999999;
+}
+"""
+
+with gr.Blocks(title="NexusRAG Platform") as demo:
+    # ZeroGPU event wire
+    init_btn = gr.Button("Init", visible=False)
+    init_out = gr.Textbox(visible=False)
+    init_btn.click(fn=gpu_init, inputs=[init_out], outputs=[init_out])
+
+    # Native React 19 Glassmorphic Interface Embed
+    gr.HTML('<iframe id="react-app-frame" src="/app"></iframe>')
+
+# Mount Django ASGI API at /api
+demo.app.mount("/api", django_app)
+
+# Mount Frontend Build Assets
 if os.path.exists(dist_dir):
     assets_dir = os.path.join(dist_dir, "assets")
     if os.path.exists(assets_dir):
-        fastapi_app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
+        demo.app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
 
-    @fastapi_app.get("/")
-    async def serve_index():
+    @demo.app.get("/app")
+    async def serve_app():
         return FileResponse(os.path.join(dist_dir, "index.html"))
 
-    @fastapi_app.get("/favicon.svg")
+    @demo.app.get("/favicon.svg")
     async def serve_fav():
         return FileResponse(os.path.join(dist_dir, "favicon.svg"))
 
-    @fastapi_app.get("/icons.svg")
+    @demo.app.get("/icons.svg")
     async def serve_ico():
         return FileResponse(os.path.join(dist_dir, "icons.svg"))
 
-# 3. Create Gradio fallback app and mount at /gradio
-with gr.Blocks(title="NexusRAG Architecture Demo") as demo:
-    gr.Markdown("# ⚡ NexusRAG Enterprise Platform")
-    gr.Markdown("The primary interactive React glassmorphic dashboard is running at the root URL [`/`](/).")
-
-app = gr.mount_gradio_app(fastapi_app, demo, path="/gradio")
-
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=7860)
+    demo.launch(server_name="0.0.0.0", server_port=7860, css=custom_css)

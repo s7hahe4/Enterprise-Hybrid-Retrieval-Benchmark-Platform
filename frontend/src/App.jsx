@@ -217,8 +217,10 @@ export default function App() {
               const { type, payload } = event;
 
               setMessages(prev => {
+                if (prev.length === 0) return prev;
                 const next = [...prev];
-                const target = { ...next[assistantMsgIndex] };
+                const lastIdx = next.length - 1;
+                const target = { ...next[lastIdx] };
                 const explain = { ...target.explainabilityData };
 
                 if (type === 'security') {
@@ -247,7 +249,7 @@ export default function App() {
                 }
 
                 target.explainabilityData = explain;
-                next[assistantMsgIndex] = target;
+                next[lastIdx] = target;
                 return next;
               });
             } catch (jsonErr) {

@@ -10,6 +10,11 @@ except Exception:
             return decorator
     spaces = _MockSpaces()
 
+@spaces.GPU
+def gpu_inference_accelerator(dummy=None):
+    """ZeroGPU accelerator hook for Hugging Face hardware allocation"""
+    return dummy
+
 import os
 import sys
 import django

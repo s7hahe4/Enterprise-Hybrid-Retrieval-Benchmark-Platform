@@ -545,6 +545,11 @@ with gr.Blocks(title="NexusRAG Platform") as demo:
                 outputs=[benchmark_table, benchmark_status]
             )
 
+# Mount Django ASGI REST & Streaming API at /api
+from django.core.asgi import get_asgi_application
+django_app = get_asgi_application()
+demo.app.mount("/api", django_app)
+
 if __name__ == "__main__":
     demo.launch(
         server_name="0.0.0.0",

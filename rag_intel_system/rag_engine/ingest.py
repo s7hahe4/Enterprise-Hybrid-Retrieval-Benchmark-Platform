@@ -317,6 +317,8 @@ def submit_async_ingest_job(file_path, filename, job_id, version_group=None, ver
     allowing the HTTP POST response to return in sub-20ms with a job ID.
     """
     def _worker():
+        from django.db import close_old_connections
+        close_old_connections()
         try:
             process_and_store_pdf(
                 file_path=file_path, 
@@ -326,7 +328,12 @@ def submit_async_ingest_job(file_path, filename, job_id, version_group=None, ver
                 version_number=version_number,
                 access_role=access_role
             )
+        except Exception as exc:
+            import traceback
+            traceback.print_exc()
+            update_job_progress(job_id, status='failed', progress_pct=0, current_step='Ingestion failed', error_message=str(exc))
         finally:
+            close_old_connections()
             if os.path.exists(file_path):
                 try:
                     os.remove(file_path)

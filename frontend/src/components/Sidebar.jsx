@@ -9,7 +9,8 @@ import {
   Layers,
   Clock,
   Shield,
-  Lock
+  Lock,
+  Trash2
 } from 'lucide-react';
 
 const ROLE_CONFIGS = {
@@ -28,6 +29,7 @@ export default function Sidebar({
   userRole = 'PUBLIC',
   onUploadFile, 
   onUpdateDocRole,
+  onDeleteDoc,
   onRefreshDocs, 
   onSelectPrompt,
   onOpenCompare 
@@ -280,8 +282,20 @@ export default function Sidebar({
                       </div>
                     </div>
                   </div>
-                  <div style={{ flexShrink: 0, alignSelf: 'center' }}>
-                    <CheckCircle2 size={15} style={{ color: 'var(--success)' }} />
+                  <div style={{ flexShrink: 0, alignSelf: 'center', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                    <CheckCircle2 size={14} style={{ color: 'var(--success)' }} />
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (window.confirm(`Delete "${doc.filename}" from knowledge base?`)) {
+                          onDeleteDoc && onDeleteDoc(doc.id, doc.filename);
+                        }
+                      }}
+                      className="doc-delete-btn"
+                      title="Delete document"
+                    >
+                      <Trash2 size={13} />
+                    </button>
                   </div>
                 </div>
               );

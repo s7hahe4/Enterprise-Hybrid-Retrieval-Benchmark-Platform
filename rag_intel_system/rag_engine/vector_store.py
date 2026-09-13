@@ -114,6 +114,24 @@ def add_chunks_to_vector_store(django_ids, text_chunks):
     # 3. Persist the index to disk
     faiss.write_index(index, INDEX_FILE)
 
+def rebuild_vector_store():
+    """Rebuilds the FAISS index from all active chunks in SQLite after a document is deleted."""
+    from documents.models import Chunk
+    if os.path.exists(INDEX_FILE):
+        try:
+            os.remove(INDEX_FILE)
+        except Exception:
+            pass
+    chunks = list(Chunk.objects.all())
+    if not chunks:
+        # Create empty index
+        index = faiss.IndexFlatL2(VECTOR_DIMENSION)
+        faiss.write_index(faiss.IndexIDMap(index), INDEX_FILE)
+        return
+    ids = [c.id for c in chunks]
+    texts = [c.text for c in chunks]
+    add_chunks_to_vector_store(ids, texts)
+
 def dense_vector_search(query, top_k=20):
     """
     Performs dense vector similarity search over the FAISS index.

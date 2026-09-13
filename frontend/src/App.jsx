@@ -60,6 +60,22 @@ export default function App() {
     }
   };
 
+  // Delete document handler
+  const handleDeleteDocument = async (docId, docName) => {
+    try {
+      const res = await fetch(`/api/documents/${docId}/`, {
+        method: 'DELETE'
+      });
+      if (res.ok) {
+        fetchDocuments();
+      } else {
+        alert('Failed to delete document.');
+      }
+    } catch (err) {
+      console.error('Failed to delete document', err);
+    }
+  };
+
   // Async Background Upload PDF handler with Live Polling
   const handleUploadFile = async (file, accessRole = 'PUBLIC') => {
     if (!file) return;
@@ -300,6 +316,7 @@ export default function App() {
             userRole={userRole}
             onUploadFile={handleUploadFile}
             onUpdateDocRole={handleUpdateDocumentRole}
+            onDeleteDoc={handleDeleteDocument}
             onRefreshDocs={fetchDocuments}
             onSelectPrompt={(q) => handleSendMessage(q)}
             onOpenCompare={(docA, docB) => setDiffModalDocs({ docA, docB })}

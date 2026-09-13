@@ -116,6 +116,32 @@ class DocumentChunkListView(APIView):
         except Document.DoesNotExist:
             return Response({"error": "Document not found"}, status=404)
 
+class DocumentDeleteView(APIView):
+    """
+    Deletes an uploaded document, cleans up its chunks,
+    and automatically rebuilds both FAISS and BM25 sparse indices.
+    """
+    def delete(self, request, pk, *args, **kwargs):
+        try:
+            doc = Document.objects.get(pk=pk)
+            filename = doc.filename
+            doc.delete() # Cascades to all Chunk rows in SQLite
+            
+            # Rebuild sparse BM25 and dense FAISS indices
+            from rag_engine.bm25_search import get_or_build_bm25_index
+            from rag_engine.vector_store import rebuild_vector_store
+            get_or_build_bm25_index(force_rebuild=True)
+            rebuild_vector_store()
+            
+            return Response({
+                "message": f"Document '{filename}' deleted successfully.",
+                "document_id": pk
+            }, status=200)
+        except Document.DoesNotExist:
+            return Response({"error": "Document not found"}, status=404)
+        except Exception as e:
+            return Response({"error": str(e)}, status=500)
+
 class RAGQueryStreamView(APIView):
     """
     Real-Time Server-Sent Events (SSE) Streaming Endpoint.

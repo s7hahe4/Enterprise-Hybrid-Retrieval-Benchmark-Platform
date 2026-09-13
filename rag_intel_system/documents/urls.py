@@ -11,12 +11,14 @@ from .views import (
     BenchmarkDatasetGenerateView,
     IngestionJobStatusView,
     DocumentVersionCompareView,
-    DocumentRoleUpdateView
+    DocumentRoleUpdateView,
+    DocumentDeleteView
 )
 
 urlpatterns = [
     path('', DocumentUploadView.as_view(), name='document-list-api'),
     path('upload/', DocumentUploadView.as_view(), name='document-upload'),
+    path('<int:pk>/', DocumentDeleteView.as_view(), name='document-delete'),
     path('<int:pk>/chunks/', DocumentChunkListView.as_view(), name='document-chunks'),
     path('<int:pk>/role/', DocumentRoleUpdateView.as_view(), name='document-role-update'),
     # Asynchronous Ingestion Job Status

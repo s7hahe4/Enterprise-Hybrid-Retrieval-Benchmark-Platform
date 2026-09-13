@@ -1,13 +1,18 @@
 import math
 import os
+import re
 import numpy as np
 
 _cross_encoder = None
 
 def get_cross_encoder():
-    """Lazily load CrossEncoder with strict single-thread limits for 512MB RAM containers."""
+    """Lazily load CrossEncoder with cloud auto-detection for memory/CPU constraints."""
     global _cross_encoder
     if _cross_encoder is None:
+        if os.environ.get('RENDER') or os.environ.get('LIGHTWEIGHT_MODE', '').lower() == 'true':
+            _cross_encoder = "FALLBACK"
+            return _cross_encoder
+
         os.environ["OMP_NUM_THREADS"] = "1"
         os.environ["MKL_NUM_THREADS"] = "1"
         try:
@@ -39,12 +44,20 @@ def rerank_chunks(query, candidates, top_k=3):
     model = get_cross_encoder()
     
     if model == "FALLBACK":
-        # Fallback to normalized RRF scores if cross-encoder model cannot fit in memory
+        q_words = set(re.findall(r'\b\w+\b', query.lower()))
         for i, c in enumerate(candidates, start=1):
+            c_words = set(re.findall(r'\b\w+\b', c.get('text', '').lower()))
+            overlap = len(q_words & c_words) / max(len(q_words), 1)
+            rrf = float(c.get('rrf_score', 0.5))
+            score = round(min(0.99, max(0.40, 0.35 * rrf + 0.65 * overlap)), 4)
             c['final_rank'] = i
             c['rank_delta'] = 0
-            c['relevance_score'] = round(float(c.get('rrf_score', 0.5)), 4)
-            c['raw_rerank_score'] = 1.0
+            c['relevance_score'] = score
+            c['raw_rerank_score'] = round(overlap * 2.0, 2)
+        candidates.sort(key=lambda x: x['relevance_score'], reverse=True)
+        for i, c in enumerate(candidates, start=1):
+            c['final_rank'] = i
+            c['rank_delta'] = c.get('initial_rrf_rank', i) - i
         return candidates[:top_k], candidates
 
     # Construct (query, passage) pairs

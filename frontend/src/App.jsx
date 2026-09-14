@@ -274,12 +274,29 @@ export default function App() {
           }
         }
       }
+
+      // Ensure content is not left empty if stream ended unexpectedly
+      setMessages(prev => {
+        if (prev.length === 0) return prev;
+        const next = [...prev];
+        const lastIdx = next.length - 1;
+        if (next[lastIdx].role === 'assistant' && !next[lastIdx].content) {
+          const target = { ...next[lastIdx] };
+          target.content = "⚠️ The server completed the request without sending an answer. Please check your query or try submitting again.";
+          next[lastIdx] = target;
+        }
+        return next;
+      });
     } catch (err) {
       setMessages(prev => {
+        if (prev.length === 0) return prev;
         const next = [...prev];
-        const target = { ...next[assistantMsgIndex] };
-        target.content = `❌ Error streaming response: ${err.message}`;
-        next[assistantMsgIndex] = target;
+        const lastIdx = next.length - 1;
+        if (next[lastIdx].role === 'assistant') {
+          const target = { ...next[lastIdx] };
+          target.content = `❌ Connection interrupted: ${err.message}. Please try asking again.`;
+          next[lastIdx] = target;
+        }
         return next;
       });
     } finally {

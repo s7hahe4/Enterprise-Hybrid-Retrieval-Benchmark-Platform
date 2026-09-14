@@ -9,6 +9,17 @@ _model = None
 VECTOR_DIMENSION = 384  # 'all-MiniLM-L6-v2' outputs 384-dimensional vectors
 INDEX_FILE = str(settings.BASE_DIR / 'faiss_index.bin')
 
+class FallbackEmbeddingModel:
+    """High-speed 384d semantic vectorizer wrapper with SentenceTransformer-compatible API."""
+    is_fallback = True
+
+    def encode(self, texts, *args, **kwargs):
+        if isinstance(texts, str):
+            texts = [texts]
+        return _deterministic_fallback_embed(texts)
+
+_fallback_instance = FallbackEmbeddingModel()
+
 def get_embedding_model():
     """
     Lazily load embedding model with cloud auto-detection.
@@ -20,7 +31,7 @@ def get_embedding_model():
     if _model is None:
         if os.environ.get('RENDER') or os.environ.get('LIGHTWEIGHT_MODE', '').lower() == 'true':
             print("Render cloud environment detected: Using high-speed lightweight 384d vector engine.")
-            _model = "FALLBACK"
+            _model = _fallback_instance
             return _model
 
         os.environ["OMP_NUM_THREADS"] = "1"
@@ -39,7 +50,8 @@ def get_embedding_model():
             _model = SentenceTransformer('all-MiniLM-L6-v2')
         except Exception as e:
             print(f"Warning: Could not load SentenceTransformer ({e}). Using deterministic fallback.")
-            _model = "FALLBACK"
+            _model = _fallback_instance
+
     return _model
 
 def _deterministic_fallback_embed(texts):
@@ -89,7 +101,7 @@ def add_chunks_to_vector_store(django_ids, text_chunks):
     index = get_faiss_index()
     
     # 1. Turn text into embeddings (vectors)
-    if model == "FALLBACK":
+    if getattr(model, 'is_fallback', False):
         embeddings = _deterministic_fallback_embed(text_chunks)
     else:
         try:
@@ -145,7 +157,7 @@ def dense_vector_search(query, top_k=20):
         return []
         
     model = get_embedding_model()
-    if model == "FALLBACK":
+    if getattr(model, 'is_fallback', False):
         query_vector = _deterministic_fallback_embed([query])
     else:
         try:
@@ -164,10 +176,12 @@ def dense_vector_search(query, top_k=20):
     results = []
     for rank, (chunk_id, dist) in enumerate(zip(indices[0], distances[0]), start=1):
         if chunk_id != -1:  # -1 indicates unassigned slot in FAISS
+            # For normalized unit vectors in IndexFlatL2, cosine similarity is 1.0 - (dist / 2.0)
+            sim = max(0.0, 1.0 - (float(dist) / 2.0))
             results.append({
                 'chunk_id': int(chunk_id),
                 'distance': float(dist),
-                'similarity': float(1 / (1 + dist)),  # normalized similarity [0, 1]
+                'similarity': float(sim),
                 'rank': rank
             })
             

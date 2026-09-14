@@ -50,7 +50,7 @@ def rewrite_query(current_query, conversation_history=None):
     if openai_key:
         try:
             from openai import OpenAI
-            client = OpenAI(api_key=openai_key)
+            client = OpenAI(api_key=openai_key, timeout=5.0)
             
             recent_turns = conversation_history[-4:]
             formatted_history = "\n".join([

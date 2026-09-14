@@ -12,7 +12,7 @@ def format_sse(event_type, payload):
     """Formats payload as Server-Sent Event (SSE) JSON."""
     return f"data: {json.dumps({'type': event_type, 'payload': payload})}\n\n"
 
-def stream_rag_pipeline(query, conversation_history=None, user_role='PUBLIC'):
+def _stream_rag_pipeline_inner(query, conversation_history=None, user_role='PUBLIC'):
     """
     Enterprise RAG Streaming Pipeline with Multi-Turn Conversational Memory & RBAC:
     0. Multi-Turn Query Rewriting (entity resolution & pronoun disambiguation)
@@ -259,7 +259,7 @@ def stream_rag_pipeline(query, conversation_history=None, user_role='PUBLIC'):
     if openai_api_key:
         try:
             from openai import OpenAI
-            client = OpenAI(api_key=openai_api_key)
+            client = OpenAI(api_key=openai_api_key, timeout=12.0)
             
             context_text = "\n\n---\n\n".join(llm_context_passages)
             
@@ -362,36 +362,56 @@ def stream_rag_pipeline(query, conversation_history=None, user_role='PUBLIC'):
     yield format_sse('done', {'status': 'completed'})
     
     # Persist to Audit DB
-    QueryLog.objects.create(question=query, answer=full_answer)
-    QueryAuditLog.objects.create(
-        original_query=query,
-        question=active_query,
-        answer=full_answer,
-        intent_classified=routing_result['intent'],
-        confidence=routing_result['confidence'],
-        was_rewritten=rewrite_result['was_rewritten'],
-        rewrite_reason=rewrite_result['reason'],
-        retrieved_chunks_count=len(top_reranked),
-        user_role=user_role,
-        blocked_chunks_count=blocked_count,
-        retrieval_metadata={
-            'top_chunks': [
-                {
-                    'id': c['chunk_id'],
-                    'doc': c['document_filename'],
-                    'relevance': c['relevance_score'],
-                    'heading': c.get('heading'),
-                    'page': c.get('page_number'),
-                    'dense_sim': c.get('dense_similarity'),
-                    'bm25_score': c.get('bm25_score'),
-                    'rrf_rank': c.get('initial_rrf_rank'),
-                    'final_rank': c.get('final_rank')
-                }
-                for c in enriched_citations
-            ]
-        },
-        latency_breakdown_ms=latency_breakdown,
-        ragas_faithfulness=ragas_scores['faithfulness'],
-        ragas_relevancy=ragas_scores['relevancy']
-    )
+    try:
+        QueryLog.objects.create(question=query, answer=full_answer)
+        QueryAuditLog.objects.create(
+            original_query=query,
+            question=active_query,
+            answer=full_answer,
+            intent_classified=routing_result['intent'],
+            confidence=routing_result['confidence'],
+            was_rewritten=rewrite_result['was_rewritten'],
+            rewrite_reason=rewrite_result['reason'],
+            retrieved_chunks_count=len(top_reranked),
+            user_role=user_role,
+            blocked_chunks_count=blocked_count,
+            retrieval_metadata={
+                'top_chunks': [
+                    {
+                        'id': c['chunk_id'],
+                        'doc': c['document_filename'],
+                        'relevance': c['relevance_score'],
+                        'heading': c.get('heading'),
+                        'page': c.get('page_number'),
+                        'dense_sim': c.get('dense_similarity'),
+                        'bm25_score': c.get('bm25_score'),
+                        'rrf_rank': c.get('initial_rrf_rank'),
+                        'final_rank': c.get('final_rank')
+                    }
+                    for c in enriched_citations
+                ]
+            },
+            latency_breakdown_ms=latency_breakdown,
+            ragas_faithfulness=ragas_scores['faithfulness'],
+            ragas_relevancy=ragas_scores['relevancy']
+        )
+    except Exception as db_err:
+        print(f"Warning: Audit log persistence encountered error: {db_err}")
+
+def stream_rag_pipeline(query, conversation_history=None, user_role='PUBLIC'):
+    """
+    Resilient SSE generator wrapper.
+    Guarantees that unhandled errors are surfaced as user-facing error tokens
+    and cleanly finalized with a 'done' event, preventing frontend hangs.
+    """
+    try:
+        yield from _stream_rag_pipeline_inner(query, conversation_history, user_role)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        err_msg = f"⚠️ An unexpected error occurred while processing your request: {str(e)}"
+        for word in err_msg.split(' '):
+            yield format_sse('token', {'delta': word + ' '})
+            time.sleep(0.015)
+        yield format_sse('done', {'status': 'error', 'error': str(e)})
 
